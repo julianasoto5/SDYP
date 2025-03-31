@@ -5,6 +5,7 @@
 
 /*---------VARIABLES COMPARTIDAS---------*/
 int T;
+int N;
 /*---------------------------------------*/
 
 
@@ -33,6 +34,17 @@ void* function(void* arg){
 
 int main(int argc, char*argv[]){
     T = atoi(argv[1]);
+    N = atoi(argv[2]);
+    
+    if ((T & (T - 1)) != 0) {
+        printf("El número de hilos debe ser potencia de 2.\n");
+        return 1;
+    }
+    if (N % T != 0) {
+        printf("N debe ser divisible por T.\n");
+        return 1;
+    }
+
     pthread_t misThreads[T];
     int threads_ids[T];
 
@@ -41,11 +53,12 @@ int main(int argc, char*argv[]){
         threads_ids[id]=id;
         pthread_create(&misThreads[id],NULL,&function,(void*)&threads_ids[id]);
     }
-    printf("Tiempo en segundos %f\n", dwalltime() - timetick);
+    
 
     for (int id=0;id<T;id++){
         pthread_join(misThreads[id],NULL);
     }
+    printf("Tiempo en segundos %f\n", dwalltime() - timetick);
 
     return 0;
 }

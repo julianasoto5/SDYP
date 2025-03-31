@@ -189,12 +189,12 @@ int main(int argc, char*argv[]){
         pthread_barrier_destroy(&barrera[i]);
     }
 
-    
+    /*
     printf("EJECUCION SECUENCIAL\n");
     timetick=dwalltime();
     ordenacion(N,0,N);
     printf("Tiempo en segundos %f\n", dwalltime() - timetick);
-
+*/
     
     free(vector);
     free(vectorSec);
@@ -211,4 +211,5 @@ int main(int argc, char*argv[]){
 5. Paralelizar la ordenación por mezcla de un vector de N elementos. Ejecutar
 con 2 y 4 Threads.
 */
+//REUTILIZAR BARRERAS???
 

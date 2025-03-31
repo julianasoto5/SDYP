@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#define ELEM_POR_THREAD(N,T) N/T
+#define ELEM_POR_THREAD N/T
 #define NUM_MAX 100
 typedef struct {
     int max;
@@ -27,8 +27,8 @@ void* function(void* arg){
     int tid=*(int*)arg;
     printf("Hilo id:%d\n",tid);
     //Código que ejecutará cada hilo
-    int inicio = tid*ELEM_POR_THREAD(N,T);
-    int fin = (tid+1)*ELEM_POR_THREAD(N,T);
+    int inicio = tid*ELEM_POR_THREAD;
+    int fin = (tid+1)*ELEM_POR_THREAD;
     num resul;
     resul.max=vector[inicio];
     resul.min=vector[inicio];
