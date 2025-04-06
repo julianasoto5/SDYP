@@ -5,8 +5,10 @@
 
 #define NUM_MAX 100
 #define CANT_ELEM N/T
+#define DESCENDING_ORDER(v,i,j) v[i]>=v[j]
+#define ASCENDING_ORDER(v,i,j) v[i]<=v[j]
 typedef struct{
-    int orden;
+    int orden; //ORDEN=0 --> DECRECIENTE
     int check;
 } ordenStatus;
 
@@ -15,8 +17,7 @@ int T;
 int N;
 int* vector;
 int resultado;
-ordenStatus* chequeo0;
-ordenStatus* chequeo1;
+ordenStatus* chequeo;
 /*---------------------------------------*/
 
 
@@ -26,20 +27,20 @@ ordenStatus* chequeo1;
 
 
 /*----------------BARRERA----------------*/
-pthread_barrier_t* barrera;
+pthread_barrier_t barrera;
 /*---------------------------------------*/
 
 int chequeoCreciente(int* vec, int i, int fin){
     int check=1;
     while(check&&(i<fin-1)){
-        check=(vec[i]<=vec[++i]);
+        check=ASCENDING_ORDER(vec,i,++i);//(vec[i]<=vec[++i]);
     }
     return check;
 }
 int chequeoDecreciente(int* vec, int i, int fin){
     int check=1;
     while(check&&(i<fin-1)){
-        check=(vec[i]>=vec[++i]);
+        check=DESCENDING_ORDER(vec,i,++i);//(vec[i]>=vec[++i]);
     }
     
     return check;
@@ -67,47 +68,31 @@ void* function(void* arg){
 
     //RECORRIDO DEL VECTOR -> determinación de orden y tipo
     if (vector[inicio] >= vector[++inicio]){
-        chequeo0[tid].orden=0;
-        chequeo0[tid].check = chequeoDecreciente(vector,inicio,fin);
+        chequeo[tid].orden=0;
+        chequeo[tid].check = chequeoDecreciente(vector,inicio,fin);
     }else {
-        chequeo0[tid].orden=1;
-        chequeo0[tid].check = chequeoCreciente(vector,inicio,fin);
+        chequeo[tid].orden=1;
+        chequeo[tid].check = chequeoCreciente(vector,inicio,fin);
     }
-    
-    ordenStatus *chequeo = chequeo0, *chequeo_sig = chequeo1, *aux;
-
-    //determina si el vector es monolítico o no de forma recursiva
-    if(inicio!=fin){
-        int numBarrera=0;
-        int trozos = T;
-        
-        while(trozos!=1){
-            pthread_barrier_wait(&barrera[numBarrera++]);
-            if(tid>=trozos/2) //libero la mitad de los hilos activos
-                break;
-            
-            //tengo cant=trozos hilos, cada uno se va a fijar que el de al lado esté ordenado, y si lo está, que lo esté de la misma forma
-            if ((chequeo[tid*2].check)&&(chequeo[tid*2+1].check)){
-                //los dos están ordenados
-                if(chequeo[tid*2].orden == chequeo[tid*2+1].orden) {
-                    chequeo_sig[tid].orden=chequeo[tid*2].orden;
-                    chequeo_sig[tid].check = 1;
-
-                }else chequeo_sig[tid].check=0;
-            }else chequeo_sig[tid].check=0;
-            
-            //no quise hacer un if-else para determinar a cuál vector ir :)
-            aux = chequeo_sig;
-            chequeo_sig = chequeo;
-            chequeo = aux;
-
-            trozos/=2; //disminuye hilos
-        }
-    }
-
+    pthread_barrier_wait(&barrera);
     if(!tid){
-        //es el tid=0
-        resultado=chequeo[0].check;
+        for(int i=0;i<T-1;i++){
+            if (((chequeo[i].check)&&(chequeo[i+1].check)) && (chequeo[i].orden == chequeo[i+1].orden)){
+                //los dos están ordenados
+                inicio=(i+1)*CANT_ELEM-1;
+                fin=inicio+1;
+                if (chequeo[i].orden ? (ASCENDING_ORDER(vector,inicio,fin)) : (DESCENDING_ORDER(vector,inicio,fin))) { //el limite tiene sentido
+                    resultado=1;
+                }
+                else {
+                    resultado=0; 
+                    break;
+                }
+            }else {
+                resultado=0; 
+                break;
+            }
+        }
     }
     pthread_exit(NULL);
 }
@@ -130,18 +115,16 @@ int main(int argc, char*argv[]){
 
     vector=(int*)malloc(sizeof(int)*N);
     int* vectorSec=(int*)malloc(sizeof(int)*N);
-
-    chequeo0=(ordenStatus*)malloc(sizeof(ordenStatus)*T); //en la primera ejecucion guardo estado del orden de T subvectores
-    chequeo1=(ordenStatus*)malloc(sizeof(ordenStatus)*T/2);
+    chequeo=(ordenStatus*)malloc(sizeof(ordenStatus)*T);
 
 
     //INICIALIZACION
     //srand(time(NULL));
+    
     for (int i=0; i<N/2; i++){
         //vector[i]=rand()%NUM_MAX;
         vector[i]=i;
         vectorSec[i]=vector[i];
-
     }
     
     for (int i=N/2, c=N-1; i<N; i++,c--){
@@ -151,14 +134,8 @@ int main(int argc, char*argv[]){
     }
     printf("\n\n");
 
-    barrera=(pthread_barrier_t*)malloc((sizeof(pthread_barrier_t)*(1+(T/4))));
 
-    
-    int hilos_en_nivel = T;
-    for (int i = 0; i < 1+(T/4); i++) {
-        pthread_barrier_init(&barrera[i], NULL, hilos_en_nivel);
-        hilos_en_nivel /= 2;
-    }
+    pthread_barrier_init(&barrera, NULL, T);
 
     double timetick = dwalltime();
     for (int id=0;id<T;id++){
@@ -172,30 +149,20 @@ int main(int argc, char*argv[]){
     }
     printf("Tiempo en segundos %f\n", dwalltime() - timetick);
     printf("Resultado monolitico: %d\n\n",resultado);
-    for (int i= 0; i<(T/4)+1; i++){
-        pthread_barrier_destroy(&barrera[i]);
-    }
-
+    pthread_barrier_destroy(&barrera);
     //SECUENCIAL
 
     free(vector);
     free(vectorSec);
-    free(chequeo0);
-    free(chequeo1);
+    free(chequeo);
+    
     return 0;
 }
 
 
 
 /*
-
 6. Paralelizar un algoritmo que determine si un vector de N elementos es
 monotónico. Un vector es monotónico si todos sus elementos están ordenados
 en forma creciente o decreciente.
-
-    -->CADA EJECUCION CHEQUEA SI ESTA ORDENADO
-    -->SI CADA PORCION DEL VECTOR ESTA ORDENADO, HAY QUE
-       CHEQUEAR QUE TODOS ESTEN ORDENADOS DE IGUAL FORMA
-
-    muy flashero?
 */

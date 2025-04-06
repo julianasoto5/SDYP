@@ -200,8 +200,6 @@ int main(int argc, char*argv[]){
     free(vectorSec);
     free(parcial0);
     free(parcial1);
-    
-    
 
     return 0;
 }
@@ -211,5 +209,4 @@ int main(int argc, char*argv[]){
 5. Paralelizar la ordenación por mezcla de un vector de N elementos. Ejecutar
 con 2 y 4 Threads.
 */
-//REUTILIZAR BARRERAS???
 
